@@ -349,7 +349,7 @@ function distributeDurations(input: PlanGenerationInput, targets: WeeklyTargets,
       : 0;
   const runDurationBudget = Math.max(0, targets.targetMinutes - recoveryDuration);
 
-  const runWeights = runSlots.map((slot) => workoutWeight(slot.type));
+  const runWeights: number[] = runSlots.map((slot) => workoutWeight(slot.type));
   const weightTotal = runWeights.reduce((sum, weight) => sum + weight, 0) || 1;
 
   runSlots.forEach((slot, index) => {

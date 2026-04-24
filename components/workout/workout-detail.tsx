@@ -85,13 +85,13 @@ export function WorkoutDetail({ workout, historyEntry }: { workout: Workout | nu
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <MiniStat
                   label="Duration"
-                  value={`${formatMinutes(historyEntry.actualDurationMin ?? historyEntry.completedDurationMin ?? workout.targetDuration)} actual · ${formatMinutes(
+                  value={`${formatMinutes(historyEntry.actualDurationMin ?? historyEntry.plannedDurationMin ?? workout.targetDuration)} actual · ${formatMinutes(
                     historyEntry.plannedDurationMin ?? workout.targetDuration
                   )} planned`}
                 />
                 <MiniStat
                   label="Distance"
-                  value={`${(historyEntry.actualDistanceKm ?? historyEntry.completedDistanceKm ?? workout.targetDistance ?? 0).toFixed(1)} km actual · ${(historyEntry.plannedDistanceKm ?? workout.targetDistance ?? 0).toFixed(1)} km planned`}
+                  value={`${(historyEntry.actualDistanceKm ?? historyEntry.plannedDistanceKm ?? workout.targetDistance ?? 0).toFixed(1)} km actual · ${(historyEntry.plannedDistanceKm ?? workout.targetDistance ?? 0).toFixed(1)} km planned`}
                 />
                 <MiniStat label="Average pace" value={formatPace(historyEntry.actualPaceSecondsPerKm)} />
                 <MiniStat label="Feeling" value={historyEntry.perceivedDifficulty ? historyEntry.perceivedDifficulty.replace("_", " ") : "—"} />

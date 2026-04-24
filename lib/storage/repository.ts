@@ -56,8 +56,6 @@ function parseState(raw: string | null): AppState | null {
         actualPaceSecondsPerKm:
           entry.actualPaceSecondsPerKm ??
           (entry.actualDurationMin && entry.actualDistanceKm ? (entry.actualDurationMin * 60) / entry.actualDistanceKm : null),
-        completedDurationMin: entry.completedDurationMin ?? (entry.completed ? workout.targetDuration : 0),
-        completedDistanceKm: entry.completedDistanceKm ?? (entry.completed ? workout.targetDistance ?? 0 : 0),
         adapted: entry.adapted ?? Boolean(workout.adapted),
         adaptationNote: entry.adaptationNote ?? workout.adaptationNote,
         readinessCheck: entry.readinessCheck ?? workout.readinessCheck

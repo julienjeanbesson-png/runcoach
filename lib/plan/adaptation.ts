@@ -311,7 +311,7 @@ export function applyWorkoutFeedback(
           adapted: true,
           adaptationNote: label,
           adaptedAt: feedback.submittedAt,
-          status: workout.status === "planned" ? "planned" : workout.status
+          status: (workout.status === "planned" ? "planned" : workout.status) as WorkoutStatus
         }
       : buildAdaptedWorkout(workout, profile, context, reduction, label, feedback.submittedAt);
 

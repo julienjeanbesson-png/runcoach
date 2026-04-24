@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { WorkoutDetail } from "@/components/workout/workout-detail";
 import { useRunCoach } from "@/hooks/use-runcoach";
 import { useParams } from "next/navigation";
+import type { HistoryEntry } from "@/types/runcoach";
 
 function getWorkoutId(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -18,7 +19,7 @@ export default function WorkoutPage() {
   const params = useParams<{ id?: string | string[] }>();
   const workoutId = getWorkoutId(params.id);
   const workout = workoutId ? getWorkout(workoutId) : null;
-  const historyEntry = workoutId ? state.history.find((entry) => entry.workoutId === workoutId) ?? null : null;
+  const historyEntry = workoutId ? state.history.find((entry: HistoryEntry) => entry.workoutId === workoutId) ?? null : null;
 
   if (!hydrated) {
     return (

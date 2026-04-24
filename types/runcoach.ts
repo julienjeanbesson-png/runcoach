@@ -153,8 +153,6 @@ export interface HistoryEntry {
   actualDurationMin?: number;
   actualDistanceKm?: number;
   actualPaceSecondsPerKm?: number | null;
-  completedDurationMin?: number;
-  completedDistanceKm?: number;
   notes: string;
   completed?: boolean;
   perceivedDifficulty?: PerceivedDifficulty;

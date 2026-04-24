@@ -33,13 +33,13 @@ export function summarizeHistoryProgress(history: HistoryEntry[]) {
   const totalConsidered = completedEntries.length + skippedEntries.length;
   const completionRate = totalConsidered > 0 ? round((completedEntries.length / totalConsidered) * 100) : 0;
   const actualDistanceKm = round(
-    completedEntries.reduce((sum, entry) => sum + (entry.actualDistanceKm ?? entry.completedDistanceKm ?? entry.plannedDistanceKm ?? 0), 0)
+    completedEntries.reduce((sum, entry) => sum + (entry.actualDistanceKm ?? entry.plannedDistanceKm ?? 0), 0)
   );
   const actualTimeMin = Math.round(
-    completedEntries.reduce((sum, entry) => sum + (entry.actualDurationMin ?? entry.completedDurationMin ?? entry.plannedDurationMin ?? 0), 0)
+    completedEntries.reduce((sum, entry) => sum + (entry.actualDurationMin ?? entry.plannedDurationMin ?? 0), 0)
   );
-  const plannedDistanceKm = round(completedEntries.reduce((sum, entry) => sum + (entry.plannedDistanceKm ?? entry.completedDistanceKm ?? 0), 0));
-  const plannedTimeMin = Math.round(completedEntries.reduce((sum, entry) => sum + (entry.plannedDurationMin ?? entry.completedDurationMin ?? 0), 0));
+  const plannedDistanceKm = round(completedEntries.reduce((sum, entry) => sum + (entry.plannedDistanceKm ?? 0), 0));
+  const plannedTimeMin = Math.round(completedEntries.reduce((sum, entry) => sum + (entry.plannedDurationMin ?? 0), 0));
 
   return {
     totalCompleted: completedEntries.length,

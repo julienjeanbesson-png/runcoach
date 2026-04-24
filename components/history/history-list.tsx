@@ -105,7 +105,7 @@ export function HistoryList({ plan, history }: { plan: TrainingPlan | null; hist
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Planned workout not yet logged</p>
                       ) : null}
                       <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-                        {entry.completed != null || entry.actualDurationMin != null || entry.actualDistanceKm != null ? (
+                      {entry.completed != null || entry.actualDurationMin != null || entry.actualDistanceKm != null ? (
                           <span>
                             {formatMinutes(entry.actualDurationMin ?? entry.plannedDurationMin ?? entry.targetDuration)} actual /{" "}
                             {formatMinutes(entry.plannedDurationMin ?? entry.targetDuration)} planned
@@ -117,8 +117,8 @@ export function HistoryList({ plan, history }: { plan: TrainingPlan | null; hist
                         <span>{entry.targetEffort}</span>
                         {entry.completed != null || entry.actualDistanceKm != null ? (
                           <span>
-                            {(entry.actualDistanceKm ?? entry.completedDistanceKm ?? entry.plannedDistanceKm ?? entry.targetDistance ?? 0).toFixed(1)} km actual /{" "}
-                            {(entry.plannedDistanceKm ?? entry.completedDistanceKm ?? entry.targetDistance ?? 0).toFixed(1)} km planned
+                            {(entry.actualDistanceKm ?? entry.plannedDistanceKm ?? entry.targetDistance ?? 0).toFixed(1)} km actual /{" "}
+                            {(entry.plannedDistanceKm ?? entry.targetDistance ?? 0).toFixed(1)} km planned
                           </span>
                         ) : (
                           <span>{(entry.plannedDistanceKm ?? entry.targetDistance ?? 0).toFixed(1)} km planned</span>

@@ -101,8 +101,8 @@ export function SettingsPanel() {
           <p className="text-sm text-slate-700">{profileSummary(state.profile)}</p>
           {state.profile ? (
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{runningLevelLabels[state.profile.runningLevel]}</Badge>
-              <Badge variant="secondary">{targetTypeLabels[state.profile.targetType]}</Badge>
+              <Badge variant="secondary">{runningLevelLabels[state.profile.runningLevel as keyof typeof runningLevelLabels]}</Badge>
+              <Badge variant="secondary">{targetTypeLabels[state.profile.targetType as keyof typeof targetTypeLabels]}</Badge>
               <Badge variant="secondary">{state.profile.runsPerWeek} runs/week</Badge>
             </div>
           ) : null}

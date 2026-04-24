@@ -66,20 +66,18 @@ export function HistoryArchive({ history }: { history: HistoryEntry[] }) {
 
                 <div className="mt-3 space-y-2">
                   <h3 className="text-base font-semibold text-slate-950">{entry.workoutTitle}</h3>
-                  <div className="flex flex-wrap gap-3 text-sm text-slate-500">
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-500">
                     {entry.actualDurationMin != null || entry.actualDistanceKm != null ? (
                       <>
-                        <span>
-                          {formatMinutes(entry.actualDurationMin ?? entry.completedDurationMin ?? entry.plannedDurationMin ?? 0)} actual
-                        </span>
-                        <span>{formatMinutes(entry.plannedDurationMin ?? entry.completedDurationMin ?? 0)} planned</span>
-                        <span>{(entry.actualDistanceKm ?? entry.completedDistanceKm ?? entry.plannedDistanceKm ?? 0).toFixed(1)} km actual</span>
-                        <span>{(entry.plannedDistanceKm ?? entry.completedDistanceKm ?? 0).toFixed(1)} km planned</span>
+                        <span>{formatMinutes(entry.actualDurationMin ?? entry.plannedDurationMin ?? 0)} actual</span>
+                        <span>{formatMinutes(entry.plannedDurationMin ?? 0)} planned</span>
+                        <span>{(entry.actualDistanceKm ?? entry.plannedDistanceKm ?? 0).toFixed(1)} km actual</span>
+                        <span>{(entry.plannedDistanceKm ?? 0).toFixed(1)} km planned</span>
                       </>
                     ) : (
                       <>
-                        <span>{formatMinutes(entry.plannedDurationMin ?? entry.completedDurationMin ?? 0)} planned</span>
-                        <span>{(entry.plannedDistanceKm ?? entry.completedDistanceKm ?? 0).toFixed(1)} km planned</span>
+                        <span>{formatMinutes(entry.plannedDurationMin ?? 0)} planned</span>
+                        <span>{(entry.plannedDistanceKm ?? 0).toFixed(1)} km planned</span>
                       </>
                     )}
                     {entry.actualPaceSecondsPerKm != null ? <span>Average pace {formatPace(entry.actualPaceSecondsPerKm)}</span> : null}

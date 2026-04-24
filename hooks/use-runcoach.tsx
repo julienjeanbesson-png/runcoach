@@ -75,8 +75,6 @@ function createUpdatedHistoryEntry(
   const plannedDistanceKm = workout?.targetDistance ?? 0;
   const actualDurationMin = feedback.actualDurationMin ?? null;
   const actualDistanceKm = feedback.actualDistanceKm ?? null;
-  const effectiveDurationMin = actualDurationMin ?? plannedDurationMin;
-  const effectiveDistanceKm = actualDistanceKm ?? plannedDistanceKm;
   const actualPaceSecondsPerKm = feedback.actualPaceSecondsPerKm ?? derivePaceSecondsPerKm(actualDurationMin, actualDistanceKm);
 
   return {
@@ -95,8 +93,6 @@ function createUpdatedHistoryEntry(
     actualDurationMin: actualDurationMin ?? undefined,
     actualDistanceKm: actualDistanceKm ?? undefined,
     actualPaceSecondsPerKm,
-    completedDurationMin: effectiveDurationMin,
-    completedDistanceKm: effectiveDistanceKm,
     completed: feedback.completed,
     perceivedDifficulty: feedback.perceivedDifficulty,
     fatigueFlag: feedback.fatigueFlag,

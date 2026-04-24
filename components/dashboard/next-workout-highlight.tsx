@@ -31,48 +31,46 @@ export function NextWorkoutHighlight({ workout, coachContext }: { workout: Worko
   const isToday = isSameDate(workout.date, new Date());
 
   return (
-    <Card className="overflow-hidden border-slate-900/5 bg-slate-950 text-white shadow-soft">
-      <CardHeader>
+    <Card className="overflow-hidden border-emerald-100 bg-white/95 shadow-soft">
+      <CardHeader className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
-            <Badge variant="neutral" className="bg-white/10 text-white">
+            <Badge variant="success" className="w-fit">
               {isToday ? "Today’s workout" : "Next workout"}
             </Badge>
-            <CardTitle className="text-white">{workout.title}</CardTitle>
-            <CardDescription className="text-slate-300">{workout.purpose}</CardDescription>
-            {coachContext ? <CardDescription className="text-slate-400">{coachContext}</CardDescription> : null}
+            <CardTitle className="text-slate-950">{workout.title}</CardTitle>
+            <CardDescription className="max-w-xl text-slate-600">{workout.purpose}</CardDescription>
+            {coachContext ? <CardDescription className="text-slate-600">{coachContext}</CardDescription> : null}
           </div>
-          <div className="rounded-2xl bg-white/10 p-3">
-            <ArrowUpRight className="h-5 w-5 text-white" />
+          <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
+            <ArrowUpRight className="h-5 w-5" />
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 text-sm text-slate-200 sm:grid-cols-4">
-          <div className="rounded-2xl bg-white/5 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Effort</p>
-            <p className="mt-1 font-medium text-white">{workout.targetEffort}</p>
+        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">Effort</p>
+            <p className="mt-1 font-medium text-slate-950">{workout.targetEffort}</p>
           </div>
-          <div className="rounded-2xl bg-white/5 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">Duration</p>
-            <p className="mt-1 font-medium text-white">{formatMinutes(workout.targetDuration)}</p>
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">Duration</p>
+            <p className="mt-1 font-medium text-slate-950">{formatMinutes(workout.targetDuration)}</p>
           </div>
-          <div className="rounded-2xl bg-white/5 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">{isToday ? "Today" : "Date"}</p>
-            <p className="mt-1 font-medium text-white">{formatLongDate(workout.date)}</p>
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">{isToday ? "Today" : "Date"}</p>
+            <p className="mt-1 font-medium text-slate-950">{formatLongDate(workout.date)}</p>
           </div>
-          <div className="rounded-2xl bg-white/5 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400">RPE</p>
-            <p className="mt-1 font-medium text-white">{workout.targetRpe}</p>
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">RPE</p>
+            <p className="mt-1 font-medium text-slate-950">{workout.targetRpe}</p>
           </div>
         </div>
         <Link
           href={`/workout/${workout.id}`}
-          className={cn(buttonVariants({ variant: "outline" }), "border-white/15 bg-white text-slate-950 hover:bg-slate-100")}
+          className={cn(buttonVariants({ variant: "outline" }), "w-full justify-center sm:w-auto")}
         >
           View workout
         </Link>
-      </CardContent>
+      </CardHeader>
     </Card>
   );
 }

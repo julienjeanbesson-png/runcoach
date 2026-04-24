@@ -110,6 +110,7 @@ export interface TrainingPlan {
   targetDate: string;
   totalWeeks: number;
   currentWeekId: string;
+  coachNotes: string[];
   weeks: TrainingWeek[];
 }
 

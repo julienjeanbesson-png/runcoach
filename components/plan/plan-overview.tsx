@@ -60,6 +60,16 @@ export function PlanOverview({
         </CardDescription>
         <CardDescription>Target date: {formatLongDate(plan.targetDate)}</CardDescription>
         <CardDescription>{selectedWeek.progressionExplanation}</CardDescription>
+        {plan.coachNotes.length ? (
+          <div className="mt-2 space-y-2 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-6 text-amber-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Coach note</p>
+            <ul className="space-y-1">
+              {plan.coachNotes.map((note) => (
+                <li key={note}>- {note}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Metric label="Plan length" value={`${plan.totalWeeks} weeks`} />

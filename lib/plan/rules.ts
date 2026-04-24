@@ -202,14 +202,14 @@ export function determineWeeklyTargets(
     planWeeks <= 3
       ? 0.05
       : input.targetType === "marathon"
-        ? 0.28
+        ? 0.3
         : input.targetType === "half_marathon"
-          ? 0.22
+          ? 0.24
           : input.targetType === "10k"
-            ? 0.14
+            ? 0.16
             : input.targetType === "5k"
-              ? 0.12
-              : 0.1;
+              ? 0.1
+              : 0.08;
   const levelGainAdjustment = input.runningLevel === "beginner" ? -0.03 : input.runningLevel === "advanced" ? 0.03 : 0;
   const ageGainAdjustment = input.age >= 45 ? -0.02 : 0;
   const injuryGainAdjustment = injuryRisk ? -0.05 : 0;
@@ -246,7 +246,7 @@ export function determineWeeklyTargets(
   const totalMinutes = Math.max(0, Math.min(rawMinutes, minuteCap));
   const cappedKm = round(totalMinutes / basePace);
 
-  const qualityCount = !injuryRisk && input.runningLevel !== "beginner" && input.targetType !== "general_fitness" ? 1 : 0;
+  const qualityCount = resolveGoalQualityCount(input, weekNumber, planWeeks, weekPhase);
 
   return {
     weekNumber,
@@ -316,6 +316,430 @@ export function targetDistanceForDuration(input: PlanGenerationInput, type: Work
 
   const pace = workoutPaceMinutesPerKm(input, type);
   return round(targetDuration / pace);
+}
+
+export interface GoalLongRunBounds {
+  floorKm: number;
+  peakKm: number;
+  weeklyShare: number;
+}
+
+export function resolveGoalLongRunBounds(input: PlanGenerationInput): GoalLongRunBounds {
+  switch (input.targetType) {
+    case "5k":
+      return {
+        floorKm: input.runningLevel === "beginner" ? 6 : input.runningLevel === "intermediate" ? 7 : 8,
+        peakKm: input.runningLevel === "beginner" ? 7 : input.runningLevel === "intermediate" ? 8.5 : 9.5,
+        weeklyShare: input.runningLevel === "beginner" ? 0.32 : 0.34
+      };
+    case "10k":
+      return {
+        floorKm: input.runningLevel === "beginner" ? 7 : input.runningLevel === "intermediate" ? 9 : 10,
+        peakKm: input.runningLevel === "beginner" ? 10 : input.runningLevel === "intermediate" ? 12.5 : 13.5,
+        weeklyShare: input.runningLevel === "beginner" ? 0.36 : 0.4
+      };
+    case "half_marathon":
+      return {
+        floorKm: input.runningLevel === "beginner" ? 10 : input.runningLevel === "intermediate" ? 11 : 13,
+        peakKm: input.runningLevel === "beginner" ? 13 : input.runningLevel === "intermediate" ? 17 : 18,
+        weeklyShare: input.runningLevel === "beginner" ? 0.44 : 0.48
+      };
+    case "marathon":
+      return {
+        floorKm: input.runningLevel === "beginner" ? 14 : input.runningLevel === "intermediate" ? 16 : 18,
+        peakKm: input.runningLevel === "beginner" ? 18 : input.runningLevel === "intermediate" ? 24 : 28,
+        weeklyShare: input.runningLevel === "beginner" ? 0.46 : 0.5
+      };
+    case "general_fitness":
+    default:
+      return {
+        floorKm: input.runningLevel === "beginner" ? 5 : input.runningLevel === "intermediate" ? 6.5 : 7.5,
+        peakKm: input.runningLevel === "beginner" ? 7 : input.runningLevel === "intermediate" ? 9 : 10,
+        weeklyShare: input.runningLevel === "beginner" ? 0.28 : 0.3
+      };
+  }
+}
+
+export function resolveGoalLongRunKm(input: PlanGenerationInput, targetKm: number, phase: WeekPhase) {
+  const bounds = resolveGoalLongRunBounds(input);
+  const phaseMultiplier = phase === "cutback" ? 0.85 : phase === "taper" ? 0.8 : phase === "short" ? 0.9 : 1;
+  const distance = round(targetKm * bounds.weeklyShare * phaseMultiplier);
+  return clamp(distance, bounds.floorKm * phaseMultiplier, bounds.peakKm);
+}
+
+export function resolveGoalQualityCount(input: PlanGenerationInput, weekNumber: number, planWeeks: number, phase: WeekPhase) {
+  const runCount = Math.max(1, Math.round(input.runsPerWeek));
+  if (phase !== "build" || runCount < 2) {
+    return 0;
+  }
+
+  if (input.runningLevel === "beginner") {
+    if (input.targetType === "general_fitness" || input.targetType === "5k") {
+      return 0;
+    }
+
+    return weekNumber % 3 === 0 ? 1 : 0;
+  }
+
+  if (input.runningLevel === "advanced" && runCount >= 5 && planWeeks >= 8 && (input.targetType === "10k" || input.targetType === "half_marathon" || input.targetType === "marathon")) {
+    return weekNumber % 4 === 2 ? 2 : 1;
+  }
+
+  if (input.targetType === "general_fitness") {
+    return 1;
+  }
+
+  return 1;
+}
+
+export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInput) {
+  if (type === "rest") {
+    return 0;
+  }
+
+  const weights: Record<PlanGenerationInput["targetType"], Record<WorkoutType, number>> = {
+    "5k": {
+      easy_run: 1,
+      long_run: input.runningLevel === "beginner" ? 1.35 : input.runningLevel === "intermediate" ? 1.45 : 1.55,
+      intervals: input.runningLevel === "beginner" ? 1.08 : 1.18,
+      tempo: input.runningLevel === "beginner" ? 1.02 : 1.08,
+      recovery: 0.72,
+      rest: 0
+    },
+    "10k": {
+      easy_run: 1,
+      long_run: input.runningLevel === "beginner" ? 1.65 : input.runningLevel === "intermediate" ? 1.8 : 1.9,
+      intervals: input.runningLevel === "beginner" ? 1.02 : 1.1,
+      tempo: input.runningLevel === "beginner" ? 1.08 : 1.15,
+      recovery: 0.72,
+      rest: 0
+    },
+    half_marathon: {
+      easy_run: 1,
+      long_run: input.runningLevel === "beginner" ? 2.1 : input.runningLevel === "intermediate" ? 2.35 : 2.5,
+      intervals: input.runningLevel === "beginner" ? 1.0 : 1.05,
+      tempo: input.runningLevel === "beginner" ? 1.1 : 1.18,
+      recovery: 0.72,
+      rest: 0
+    },
+    marathon: {
+      easy_run: 1,
+      long_run: input.runningLevel === "beginner" ? 2.35 : input.runningLevel === "intermediate" ? 2.6 : 2.8,
+      intervals: input.runningLevel === "beginner" ? 0.95 : 1.0,
+      tempo: input.runningLevel === "beginner" ? 1.08 : 1.15,
+      recovery: 0.72,
+      rest: 0
+    },
+    general_fitness: {
+      easy_run: 1,
+      long_run: input.runningLevel === "beginner" ? 1.15 : input.runningLevel === "intermediate" ? 1.25 : 1.3,
+      intervals: input.runningLevel === "beginner" ? 0.9 : 0.95,
+      tempo: input.runningLevel === "beginner" ? 1.0 : 1.05,
+      recovery: 0.72,
+      rest: 0
+    }
+  };
+
+  return weights[input.targetType][type];
+}
+
+export function resolveWorkoutTitle(type: WorkoutType, input: PlanGenerationInput, weekNumber: number, qualityIndex: number) {
+  if (type === "easy_run") {
+    if (input.targetType === "5k") {
+      return weekNumber === 1 ? "Easy run + strides" : "Easy run with strides";
+    }
+
+    if (input.targetType === "10k") {
+      return "Aerobic easy run";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return "Aerobic endurance run";
+    }
+
+    if (input.targetType === "marathon") {
+      return "Marathon easy run";
+    }
+
+    return "Easy run";
+  }
+
+  if (type === "long_run") {
+    if (input.targetType === "5k") {
+      return "Endurance long run";
+    }
+
+    if (input.targetType === "10k") {
+      return "Long run";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return "Half marathon long run";
+    }
+
+    if (input.targetType === "marathon") {
+      return "Marathon long run";
+    }
+
+    return "Long aerobic run";
+  }
+
+  if (type === "recovery") {
+    return "Recovery jog";
+  }
+
+  if (type === "rest") {
+    return "Rest day";
+  }
+
+  if (type === "tempo") {
+    if (input.targetType === "general_fitness") {
+      return "Steady progression";
+    }
+
+    if (input.targetType === "marathon") {
+      return qualityIndex === 0 ? "Marathon tempo" : "Marathon support tempo";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return qualityIndex === 0 ? "Threshold tempo" : "Tempo support";
+    }
+
+    if (input.targetType === "10k") {
+      return qualityIndex === 0 ? "10K tempo" : "Threshold tempo";
+    }
+
+    return qualityIndex === 0 ? "Tempo run" : "Tempo support";
+  }
+
+  if (input.targetType === "5k") {
+    return qualityIndex === 0 ? "5K intervals" : "Speed intervals";
+  }
+
+  if (input.targetType === "10k") {
+    return qualityIndex === 0 ? "10K intervals" : "Threshold intervals";
+  }
+
+  if (input.targetType === "half_marathon") {
+    return qualityIndex === 0 ? "Cruise intervals" : "Tempo intervals";
+  }
+
+  if (input.targetType === "marathon") {
+    return qualityIndex === 0 ? "Marathon intervals" : "Marathon support";
+  }
+
+  return qualityIndex === 0 ? "Quality session" : "Support session";
+}
+
+export function resolveWorkoutPurpose(type: WorkoutType, input: PlanGenerationInput, phase: WeekPhase) {
+  if (type === "rest") {
+    return "Protect recovery and keep the week absorbable.";
+  }
+
+  if (type === "recovery") {
+    return phase === "taper" ? "Freshen up before race week." : "Clear fatigue without adding stress.";
+  }
+
+  if (type === "easy_run") {
+    if (input.targetType === "5k") {
+      return "Build aerobic consistency and leave room for short strides.";
+    }
+
+    if (input.targetType === "10k") {
+      return "Build the aerobic base that supports threshold work.";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return "Add durable easy volume between longer efforts.";
+    }
+
+    if (input.targetType === "marathon") {
+      return "Keep the volume moving without adding fatigue.";
+    }
+
+    return "Build aerobic consistency at a controlled effort.";
+  }
+
+  if (type === "long_run") {
+    if (input.targetType === "5k") {
+      return "Give you just enough endurance for faster sessions without overloading the week.";
+    }
+
+    if (input.targetType === "10k") {
+      return "Build the longer aerobic base that supports race-specific endurance.";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return "Extend endurance toward half marathon durability.";
+    }
+
+    if (input.targetType === "marathon") {
+      return "Build marathon durability and fatigue resistance.";
+    }
+
+    return "Raise endurance gradually without a sudden jump in load.";
+  }
+
+  if (type === "tempo") {
+    if (input.targetType === "general_fitness") {
+      return "Add a steady aerobic stimulus without overcomplicating the week.";
+    }
+
+    if (input.targetType === "marathon") {
+      return "Practice sustainable rhythm and efficient effort for longer running.";
+    }
+
+    if (input.targetType === "half_marathon") {
+      return "Raise threshold strength for stronger race-day stamina.";
+    }
+
+    if (input.targetType === "10k") {
+      return "Blend speed and endurance at a sustainable hard effort.";
+    }
+
+    return "Practice sustained controlled effort near threshold.";
+  }
+
+  if (input.targetType === "5k") {
+    return "Improve turnover and speed with controlled effort.";
+  }
+
+  if (input.targetType === "10k") {
+    return "Develop race-specific control and sustainable speed.";
+  }
+
+  if (input.targetType === "half_marathon") {
+    return "Support race-specific stamina and threshold strength.";
+  }
+
+  if (input.targetType === "marathon") {
+    return "Develop marathon-specific rhythm and fatigue resistance.";
+  }
+
+  return "Maintain fitness with a small quality stimulus.";
+}
+
+export function resolveWorkoutDescription(
+  type: WorkoutType,
+  input: PlanGenerationInput,
+  phase: WeekPhase,
+  targetDuration: number,
+  qualityIndex: number
+) {
+  const durationText = `${targetDuration} min`;
+
+  if (type === "rest") {
+    return "No running today. Keep the day truly easy and let the training absorb.";
+  }
+
+  if (type === "recovery") {
+    return `Move lightly for ${durationText}. The goal is to feel fresher tomorrow than you do today.`;
+  }
+
+  if (type === "easy_run") {
+    if (input.targetType === "5k") {
+      return `Keep this relaxed for about ${durationText}. Run conversationally and finish with 4 to 6 short strides if you feel smooth.`;
+    }
+
+    if (input.targetType === "10k") {
+      return `Run relaxed for about ${durationText}. Stay aerobic and save your focus for the quality session.`;
+    }
+
+    if (input.targetType === "half_marathon") {
+      return `Run relaxed for about ${durationText}. Keep the effort easy so the long run and threshold work stay productive.`;
+    }
+
+    if (input.targetType === "marathon") {
+      return `Run relaxed for about ${durationText}. This is durability work, not pace work.`;
+    }
+
+    return `Run relaxed for about ${durationText}. Keep the effort conversational and repeatable.`;
+  }
+
+  if (type === "long_run") {
+    const goalHint =
+      input.targetType === "5k"
+        ? "This is the aerobic base that supports faster running."
+        : input.targetType === "10k"
+          ? "This is the key endurance anchor for the week."
+          : input.targetType === "half_marathon"
+            ? "Keep the first half very controlled and let endurance build naturally."
+            : input.targetType === "marathon"
+              ? "This is the most important durability workout of the week."
+              : "Stay smooth and finish feeling better than you started.";
+
+    return `Spend about ${durationText} on a steady easy effort. ${goalHint} The cap is set from your current profile, not a generic mileage jump.`;
+  }
+
+  if (type === "tempo") {
+    const targetHint =
+      input.targetType === "general_fitness"
+        ? "Stay comfortably strong, not strained."
+        : input.targetType === "marathon"
+          ? "Hold a sustainable rhythm without drifting too hard."
+          : input.targetType === "half_marathon"
+            ? "Hold a controlled threshold effort."
+            : input.targetType === "10k"
+              ? "Hold a controlled threshold effort."
+              : "Keep the reps sharp but under control.";
+
+    const sessionLabel = qualityIndex > 0 ? "secondary quality session" : "main quality session";
+    return `Include a warm-up and then hold tempo work inside about ${durationText}. ${targetHint} This is the ${sessionLabel} for the week.`;
+  }
+
+  const repStyle =
+    input.targetType === "5k"
+      ? "short controlled reps with full recovery"
+      : input.targetType === "10k"
+        ? "moderate reps with steady recoveries"
+        : input.targetType === "half_marathon"
+          ? "cruise-style reps near threshold"
+          : input.targetType === "marathon"
+            ? "marathon-specific rhythm blocks"
+            : "controlled fartlek blocks";
+
+  const phaseHint = phase === "taper" ? "Keep the effort snappy but leave a little in reserve." : "Stop before the workout turns ragged.";
+
+  const sessionLabel = qualityIndex > 0 ? "support quality session" : "main quality session";
+  return `Use about ${durationText} for ${repStyle}. This is the ${sessionLabel} for the week. ${phaseHint} It is sized to fit your weekly load and session limit.`;
+}
+
+export function buildGoalCoachNotes(input: PlanGenerationInput, totalWeeks: number, peakLongRunKm: number) {
+  const notes: string[] = [];
+
+  if (input.targetType === "general_fitness") {
+    notes.push("This plan stays simple and sustainable: mostly easy running with only a small quality touch when safe.");
+  }
+
+  if (input.targetType === "5k") {
+    notes.push("5K plans keep the long run modest and use short quality work only when the week has room for it.");
+  }
+
+  if (input.targetType === "10k") {
+    notes.push("10K plans blend endurance and threshold work so you build race-specific stamina without excessive mileage.");
+  }
+
+  if (input.targetType === "half_marathon") {
+    if (totalWeeks <= 6 || input.currentWeeklyKm < 25 || peakLongRunKm < 11) {
+      notes.push("This is a short half marathon build, so the plan prioritizes safe long-run progression over aggressive mileage.");
+    } else {
+      notes.push("Half marathon plans prioritize long-run progression, threshold work, and conservative endurance gains.");
+    }
+  }
+
+  if (input.targetType === "marathon") {
+    if (totalWeeks <= 12 || input.currentWeeklyKm < 40 || peakLongRunKm < 14) {
+      notes.push("Your marathon target is close relative to your current weekly volume. This plan is conservative and may not fully prepare you for peak marathon demands.");
+    } else {
+      notes.push("Marathon plans emphasize long-run progression, weekly durability, and careful fatigue management.");
+    }
+  }
+
+  if (detectInjuryRisk(input.injuryNotes)) {
+    notes.push("Injury notes were detected, so the plan keeps intensity conservative and avoids aggressive workouts.");
+  }
+
+  return notes;
 }
 
 export function workoutEffortLabel(type: WorkoutType) {

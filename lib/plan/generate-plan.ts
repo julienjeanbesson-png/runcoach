@@ -10,10 +10,16 @@ import type {
 import { SCHEMA_VERSION, targetTypeLabels } from "@/data/constants";
 import { addDays } from "@/lib/utils/date";
 import {
+  buildGoalCoachNotes,
   determinePlanWeeks,
   determineWeeklyTargets,
+  resolveGoalLongRunBounds,
   resolvePrimaryQualityType,
   resolveSecondaryQualityType,
+  resolveWorkoutDescription,
+  resolveWorkoutPurpose,
+  resolveWorkoutTitle,
+  resolveWorkoutWeight,
   targetDistanceForDuration,
   workoutEffortLabel,
   workoutRpe,
@@ -32,180 +38,6 @@ function round(value: number) {
 
 function targetLabel(targetType: PlanGenerationInput["targetType"]) {
   return targetTypeLabels[targetType];
-}
-
-function workoutWeight(type: WorkoutType) {
-  switch (type) {
-    case "long_run":
-      return 1.55;
-    case "intervals":
-      return 1.05;
-    case "tempo":
-      return 1.12;
-    case "recovery":
-      return 0.72;
-    case "rest":
-      return 0;
-    case "easy_run":
-    default:
-      return 1;
-  }
-}
-
-function formatWorkoutTitle(type: WorkoutType, input: PlanGenerationInput, weekNumber: number, qualityIndex: number) {
-  if (type === "easy_run") {
-    return weekNumber === 1 ? "Easy run" : "Aerobic easy run";
-  }
-
-  if (type === "long_run") {
-    return "Long run";
-  }
-
-  if (type === "recovery") {
-    return "Recovery jog";
-  }
-
-  if (type === "rest") {
-    return "Rest day";
-  }
-
-  if (type === "tempo") {
-    if (input.targetType === "general_fitness") {
-      return "Steady tempo";
-    }
-
-    if (input.targetType === "marathon") {
-      return "Marathon tempo";
-    }
-
-    return qualityIndex === 0 ? "Tempo run" : "Tempo support";
-  }
-
-  if (input.targetType === "marathon") {
-    return qualityIndex === 0 ? "Controlled fartlek" : "Marathon intervals";
-  }
-
-  if (input.targetType === "5k") {
-    return qualityIndex === 0 ? "5K intervals" : "Speed intervals";
-  }
-
-  if (input.targetType === "10k") {
-    return qualityIndex === 0 ? "10K intervals" : "Threshold intervals";
-  }
-
-  return qualityIndex === 0 ? "Quality session" : "Secondary quality";
-}
-
-function buildPurpose(type: WorkoutType, input: PlanGenerationInput, phase: WeeklyTargets["phase"]) {
-  if (type === "rest") {
-    return "Protect recovery and keep the week absorbable.";
-  }
-
-  if (type === "recovery") {
-    return phase === "taper" ? "Freshen up before race week." : "Clear fatigue without adding stress.";
-  }
-
-  if (type === "easy_run") {
-    return "Build aerobic consistency at a controlled effort.";
-  }
-
-  if (type === "long_run") {
-    if (input.targetType === "marathon") {
-      return "Build endurance and durability for longer race demands.";
-    }
-
-    if (input.targetType === "half_marathon") {
-      return "Extend steady endurance while staying comfortably under control.";
-    }
-
-    return "Raise endurance gradually without a sudden jump in load.";
-  }
-
-  if (type === "tempo") {
-    if (input.targetType === "general_fitness") {
-      return "Add a steady aerobic stimulus without overcomplicating the week.";
-    }
-
-    if (input.targetType === "marathon") {
-      return "Practice sustained effort and efficient rhythm.";
-    }
-
-    return "Practice sustained controlled effort near threshold.";
-  }
-
-  if (input.targetType === "5k") {
-    return "Improve turnover and speed with controlled effort.";
-  }
-
-  if (input.targetType === "10k") {
-    return "Blend speed and endurance at a sustainable hard effort.";
-  }
-
-  if (input.targetType === "half_marathon") {
-    return "Support race-specific stamina and threshold strength.";
-  }
-
-  return "Maintain fitness with a small quality stimulus.";
-}
-
-function buildDescription(
-  type: WorkoutType,
-  input: PlanGenerationInput,
-  phase: WeeklyTargets["phase"],
-  targetDuration: number,
-  qualityIndex: number
-) {
-  const durationText = `${targetDuration} min`;
-
-  if (type === "rest") {
-    return "No running today. Keep the day truly easy and let the training absorb.";
-  }
-
-  if (type === "recovery") {
-    return `Move lightly for ${durationText}. The goal is to feel fresher tomorrow than you do today.`;
-  }
-
-  if (type === "easy_run") {
-    return phase === "short"
-      ? `Keep this controlled for about ${durationText}. Avoid pushing pace and finish with energy left.`
-      : `Run relaxed for about ${durationText}. You should be able to speak in full sentences throughout.`;
-  }
-
-  if (type === "long_run") {
-    const raceHint =
-      input.targetType === "marathon"
-        ? "This is your key endurance builder, so keep it smooth from start to finish."
-        : input.targetType === "half_marathon"
-          ? "This is the longest aerobic touch of the week."
-          : "Finish feeling steady rather than tired.";
-
-    return `Spend about ${durationText} on a steady easy effort. ${raceHint} The cap is set from your current profile, not a generic mileage jump.`;
-  }
-
-  if (type === "tempo") {
-    const targetHint =
-      input.targetType === "marathon"
-        ? "Hold a sustainable rhythm without drifting too hard."
-        : input.targetType === "general_fitness"
-          ? "Stay comfortably strong, not strained."
-          : "Hold a controlled threshold effort.";
-
-    return `Include a warm-up and then hold tempo work inside about ${durationText}. ${targetHint} This is the smallest useful dose for your current profile.`;
-  }
-
-  const repStyle =
-    input.targetType === "5k"
-      ? "shorter reps with full control"
-      : input.targetType === "10k"
-        ? "moderate reps with steady recoveries"
-        : input.targetType === "half_marathon"
-          ? "cruise-style reps near threshold"
-          : "controlled fartlek blocks";
-
-  const qualifier = qualityIndex > 0 ? "This is the secondary quality session for the week." : "This is the main quality session for the week.";
-  const phaseHint = phase === "taper" ? "Keep the effort snappy but leave a little in reserve." : "Stop before the workout turns ragged.";
-
-  return `Use about ${durationText} for ${repStyle}. ${qualifier} ${phaseHint} It is sized to fit your weekly load and session limit.`;
 }
 
 function buildRunSlots(input: PlanGenerationInput, targets: WeeklyTargets): WorkoutSlot[] {
@@ -237,10 +69,10 @@ function buildRunSlots(input: PlanGenerationInput, targets: WeeklyTargets): Work
     if (isLongRun) {
       slots.push({
         type: "long_run",
-        title: formatWorkoutTitle("long_run", input, targets.weekNumber, 0),
+        title: resolveWorkoutTitle("long_run", input, targets.weekNumber, 0),
         targetRpe: workoutRpe("long_run"),
         targetEffort: workoutEffortLabel("long_run"),
-        purpose: buildPurpose("long_run", input, targets.phase),
+        purpose: resolveWorkoutPurpose("long_run", input, targets.phase),
         description: "",
         targetDuration: 0
       });
@@ -252,11 +84,11 @@ function buildRunSlots(input: PlanGenerationInput, targets: WeeklyTargets): Work
       const actualQualityIndex = qualityIndex;
       slots.push({
         type: qualityType,
-        title: formatWorkoutTitle(qualityType, input, targets.weekNumber, qualityIndex),
+        title: resolveWorkoutTitle(qualityType, input, targets.weekNumber, qualityIndex),
         targetRpe: workoutRpe(qualityType),
         targetEffort: workoutEffortLabel(qualityType),
-        purpose: buildPurpose(qualityType, input, targets.phase),
-        description: buildDescription(qualityType, input, targets.phase, 0, actualQualityIndex),
+        purpose: resolveWorkoutPurpose(qualityType, input, targets.phase),
+        description: resolveWorkoutDescription(qualityType, input, targets.phase, 0, actualQualityIndex),
         targetDuration: 0,
         qualityIndex: actualQualityIndex
       });
@@ -265,11 +97,11 @@ function buildRunSlots(input: PlanGenerationInput, targets: WeeklyTargets): Work
 
     slots.push({
       type: "easy_run",
-      title: formatWorkoutTitle("easy_run", input, targets.weekNumber, 0),
+      title: resolveWorkoutTitle("easy_run", input, targets.weekNumber, 0),
       targetRpe: workoutRpe("easy_run"),
       targetEffort: workoutEffortLabel("easy_run"),
-      purpose: buildPurpose("easy_run", input, targets.phase),
-      description: buildDescription("easy_run", input, targets.phase, 0, 0),
+      purpose: resolveWorkoutPurpose("easy_run", input, targets.phase),
+      description: resolveWorkoutDescription("easy_run", input, targets.phase, 0, 0),
       targetDuration: 0
     });
   }
@@ -282,11 +114,11 @@ function buildRecoverySlot(input: PlanGenerationInput, targets: WeeklyTargets): 
 
   return {
     type,
-    title: formatWorkoutTitle(type, input, targets.weekNumber, 0),
+    title: resolveWorkoutTitle(type, input, targets.weekNumber, 0),
     targetRpe: workoutRpe(type),
     targetEffort: workoutEffortLabel(type),
-    purpose: buildPurpose(type, input, targets.phase),
-    description: buildDescription(type, input, targets.phase, 0, 0),
+    purpose: resolveWorkoutPurpose(type, input, targets.phase),
+    description: resolveWorkoutDescription(type, input, targets.phase, 0, 0),
     targetDuration: 0
   };
 }
@@ -349,7 +181,7 @@ function distributeDurations(input: PlanGenerationInput, targets: WeeklyTargets,
       : 0;
   const runDurationBudget = Math.max(0, targets.targetMinutes - recoveryDuration);
 
-  const runWeights: number[] = runSlots.map((slot) => workoutWeight(slot.type));
+  const runWeights: number[] = runSlots.map((slot) => resolveWorkoutWeight(slot.type, input));
   const weightTotal = runWeights.reduce((sum, weight) => sum + weight, 0) || 1;
 
   runSlots.forEach((slot, index) => {
@@ -365,7 +197,7 @@ function distributeDurations(input: PlanGenerationInput, targets: WeeklyTargets,
 
     slot.targetDuration = duration;
     const qualityIndex = slot.qualityIndex ?? 0;
-    slot.description = buildDescription(slot.type, input, targets.phase, duration, qualityIndex);
+    slot.description = resolveWorkoutDescription(slot.type, input, targets.phase, duration, qualityIndex);
     const targetDistance = targetDistanceForDuration(input, slot.type, duration);
     if (slot.type !== "rest") {
       slot.targetDistance = targetDistance;
@@ -374,7 +206,7 @@ function distributeDurations(input: PlanGenerationInput, targets: WeeklyTargets,
 
   recoverySlots.forEach((slot) => {
     slot.targetDuration = recoveryDuration;
-    slot.description = buildDescription(slot.type, input, targets.phase, recoveryDuration, 0);
+    slot.description = resolveWorkoutDescription(slot.type, input, targets.phase, recoveryDuration, 0);
     const targetDistance = targetDistanceForDuration(input, slot.type, recoveryDuration);
     if (slot.type !== "rest") {
       slot.targetDistance = targetDistance;
@@ -385,7 +217,7 @@ function distributeDurations(input: PlanGenerationInput, targets: WeeklyTargets,
     .filter((slot) => slot.type === "rest")
     .forEach((slot) => {
       slot.targetDuration = 0;
-      slot.description = buildDescription(slot.type, input, targets.phase, 0, 0);
+      slot.description = resolveWorkoutDescription(slot.type, input, targets.phase, 0, 0);
       slot.targetDistance = 0;
     });
 
@@ -453,6 +285,8 @@ export function generateTrainingPlan(profile: PlanGenerationInput): TrainingPlan
   const createdAt = new Date().toISOString();
   const startDate = new Date();
   const weeks: TrainingWeek[] = [];
+  const goalBounds = resolveGoalLongRunBounds(profile);
+  const coachNotes = buildGoalCoachNotes(profile, totalWeeks, goalBounds.peakKm);
   let previousTargetKm: number | undefined;
 
   for (let weekNumber = 1; weekNumber <= totalWeeks; weekNumber += 1) {
@@ -471,6 +305,7 @@ export function generateTrainingPlan(profile: PlanGenerationInput): TrainingPlan
     targetDate: profile.targetDate,
     totalWeeks,
     currentWeekId: weeks[0]?.id ?? "week-1",
+    coachNotes,
     weeks
   };
 }

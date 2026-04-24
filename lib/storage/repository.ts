@@ -65,6 +65,7 @@ function parseState(raw: string | null): AppState | null {
       parsed.activePlan && parsed.activePlan.weeks
         ? {
             ...parsed.activePlan,
+            coachNotes: parsed.activePlan.coachNotes ?? [],
             weeks: parsed.activePlan.weeks.map((week) => {
               const progressionRole = week.progressionRole ?? getProgressionRole(week.weekNumber, parsed.activePlan?.totalWeeks ?? week.weekNumber, week.phase);
               return {
@@ -74,7 +75,12 @@ function parseState(raw: string | null): AppState | null {
               };
             })
           }
-        : parsed.activePlan;
+        : parsed.activePlan
+          ? {
+              ...parsed.activePlan,
+              coachNotes: parsed.activePlan.coachNotes ?? []
+            }
+          : parsed.activePlan;
 
     return {
       ...parsed,

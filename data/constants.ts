@@ -24,6 +24,7 @@ export const workoutTypeLabels: Record<WorkoutType, string> = {
   intervals: "Intervals",
   tempo: "Tempo",
   recovery: "Recovery",
+  race: "Race",
   rest: "Rest"
 };
 

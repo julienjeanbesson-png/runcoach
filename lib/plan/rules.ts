@@ -46,6 +46,7 @@ const TYPE_PACE_ADJUSTMENT: Record<WorkoutType, number> = {
   intervals: -0.55,
   tempo: -0.35,
   recovery: 0.85,
+  race: -0.2,
   rest: 0
 };
 
@@ -55,6 +56,7 @@ const TYPE_RPE: Record<WorkoutType, number> = {
   intervals: 8,
   tempo: 7,
   recovery: 2,
+  race: 8,
   rest: 1
 };
 
@@ -64,6 +66,7 @@ const TYPE_EFFORT: Record<WorkoutType, string> = {
   intervals: "Hard but controlled",
   tempo: "Comfortably hard",
   recovery: "Very easy",
+  race: "Race effort",
   rest: "Off"
 };
 
@@ -136,6 +139,95 @@ export function detectInjuryRisk(injuryNotes?: string) {
   return INJURY_KEYWORDS.some((keyword) => notes.includes(keyword));
 }
 
+export function getRaceDistanceKm(targetType: TargetType) {
+  switch (targetType) {
+    case "5k":
+      return 5;
+    case "10k":
+      return 10;
+    case "half_marathon":
+      return 21.1;
+    case "marathon":
+      return 42.2;
+    case "general_fitness":
+    default:
+      return 0;
+  }
+}
+
+export function getRaceWorkoutTitle(targetType: TargetType) {
+  switch (targetType) {
+    case "5k":
+      return "5K race";
+    case "10k":
+      return "10K race";
+    case "half_marathon":
+      return "Half marathon race";
+    case "marathon":
+      return "Marathon race";
+    case "general_fitness":
+    default:
+      return "Race day";
+  }
+}
+
+export function getRaceWorkoutPurpose(targetType: TargetType) {
+  switch (targetType) {
+    case "5k":
+      return "This is the target event. Run the 5K at a controlled race effort and let the plan end here.";
+    case "10k":
+      return "This is the target event. Run the 10K at a controlled race effort and let the plan end here.";
+    case "half_marathon":
+      return "This is the target event. Run the half marathon at a controlled race effort and let the plan end here.";
+    case "marathon":
+      return "This is the target event. Run the marathon at a controlled race effort and let the plan end here.";
+    case "general_fitness":
+    default:
+      return "This session closes the plan with a simple target-day effort.";
+  }
+}
+
+export function getRaceWorkoutDescription(targetType: TargetType) {
+  switch (targetType) {
+    case "5k":
+      return "This is the target race day. Warm up well, run the 5K, and treat this as the final workout of the plan.";
+    case "10k":
+      return "This is the target race day. Warm up well, run the 10K, and treat this as the final workout of the plan.";
+    case "half_marathon":
+      return "This is the target race day. Warm up well, run the half marathon, and treat this as the final workout of the plan.";
+    case "marathon":
+      return "This is the target race day. Warm up well, run the marathon, and treat this as the final workout of the plan.";
+    case "general_fitness":
+    default:
+      return "This is the final session of the block. Keep it simple and complete the plan cleanly.";
+  }
+}
+
+export function getRaceWorkoutPaceMinutesPerKm(input: PlanGenerationInput) {
+  const base = determineBasePaceMinutesPerKm(input);
+  const adjustment =
+    input.targetType === "5k"
+      ? -0.55
+      : input.targetType === "10k"
+        ? -0.4
+        : input.targetType === "half_marathon"
+          ? -0.28
+          : input.targetType === "marathon"
+            ? -0.12
+            : -0.08;
+
+  return round(Math.max(3.5, base + adjustment));
+}
+
+export function getRaceWorkoutDuration(input: PlanGenerationInput) {
+  const distance = getRaceDistanceKm(input.targetType);
+  if (distance <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round(distance * getRaceWorkoutPaceMinutesPerKm(input)));
+}
+
 export function determinePlanWeeks(input: PlanGenerationInput) {
   const targetWeeks = weeksUntilTarget(input.targetDate);
   const cap = TARGET_WEEK_CAP[input.targetType];
@@ -186,7 +278,20 @@ export function determineWeeklyTargets(
   const injuryRisk = detectInjuryRisk(input.injuryNotes);
   const runCount = Math.max(1, Math.round(input.runsPerWeek));
   const basePace = determineBasePaceMinutesPerKm(input);
-  const weekPhase = weekNumber > planWeeks - 2 ? "taper" : weekNumber > 1 && weekNumber % 4 === 0 && planWeeks > 4 ? "cutback" : planWeeks <= 3 ? "short" : "build";
+  const raceGoal = input.targetType !== "general_fitness";
+  const weekPhase = raceGoal
+    ? weekNumber === planWeeks
+      ? "taper"
+      : weekNumber > 1 && weekNumber % 4 === 0 && planWeeks > 4
+        ? "cutback"
+        : "build"
+    : weekNumber > planWeeks - 2
+      ? "taper"
+      : weekNumber > 1 && weekNumber % 4 === 0 && planWeeks > 4
+        ? "cutback"
+        : planWeeks <= 3
+          ? "short"
+          : "build";
   const progressionRole = getProgressionRole(weekNumber, planWeeks, weekPhase);
   const progressionExplanation = getProgressionExplanation(progressionRole);
 
@@ -303,6 +408,10 @@ export function targetDurationForDistance(input: PlanGenerationInput, type: Work
     return 0;
   }
 
+  if (type === "race") {
+    return getRaceWorkoutDuration(input);
+  }
+
   const pace = workoutPaceMinutesPerKm(input, type);
   const cappedDistance = Math.max(0, distanceKm);
   const duration = round(cappedDistance * pace);
@@ -312,6 +421,10 @@ export function targetDurationForDistance(input: PlanGenerationInput, type: Work
 export function targetDistanceForDuration(input: PlanGenerationInput, type: WorkoutType, targetDuration: number) {
   if (type === "rest" || targetDuration <= 0) {
     return 0;
+  }
+
+  if (type === "race") {
+    return getRaceDistanceKm(input.targetType);
   }
 
   const pace = workoutPaceMinutesPerKm(input, type);
@@ -397,6 +510,10 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
     return 0;
   }
 
+  if (type === "race") {
+    return 1.1;
+  }
+
   const weights: Record<PlanGenerationInput["targetType"], Record<WorkoutType, number>> = {
     "5k": {
       easy_run: 1,
@@ -404,6 +521,7 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
       intervals: input.runningLevel === "beginner" ? 1.08 : 1.18,
       tempo: input.runningLevel === "beginner" ? 1.02 : 1.08,
       recovery: 0.72,
+      race: 1.1,
       rest: 0
     },
     "10k": {
@@ -412,6 +530,7 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
       intervals: input.runningLevel === "beginner" ? 1.02 : 1.1,
       tempo: input.runningLevel === "beginner" ? 1.08 : 1.15,
       recovery: 0.72,
+      race: 1.1,
       rest: 0
     },
     half_marathon: {
@@ -420,6 +539,7 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
       intervals: input.runningLevel === "beginner" ? 1.0 : 1.05,
       tempo: input.runningLevel === "beginner" ? 1.1 : 1.18,
       recovery: 0.72,
+      race: 1.1,
       rest: 0
     },
     marathon: {
@@ -428,6 +548,7 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
       intervals: input.runningLevel === "beginner" ? 0.95 : 1.0,
       tempo: input.runningLevel === "beginner" ? 1.08 : 1.15,
       recovery: 0.72,
+      race: 1.1,
       rest: 0
     },
     general_fitness: {
@@ -436,6 +557,7 @@ export function resolveWorkoutWeight(type: WorkoutType, input: PlanGenerationInp
       intervals: input.runningLevel === "beginner" ? 0.9 : 0.95,
       tempo: input.runningLevel === "beginner" ? 1.0 : 1.05,
       recovery: 0.72,
+      race: 1.1,
       rest: 0
     }
   };
@@ -492,6 +614,10 @@ export function resolveWorkoutTitle(type: WorkoutType, input: PlanGenerationInpu
     return "Rest day";
   }
 
+  if (type === "race") {
+    return getRaceWorkoutTitle(input.targetType);
+  }
+
   if (type === "tempo") {
     if (input.targetType === "general_fitness") {
       return "Steady progression";
@@ -534,6 +660,10 @@ export function resolveWorkoutTitle(type: WorkoutType, input: PlanGenerationInpu
 export function resolveWorkoutPurpose(type: WorkoutType, input: PlanGenerationInput, phase: WeekPhase) {
   if (type === "rest") {
     return "Protect recovery and keep the week absorbable.";
+  }
+
+  if (type === "race") {
+    return getRaceWorkoutPurpose(input.targetType);
   }
 
   if (type === "recovery") {
@@ -632,6 +762,10 @@ export function resolveWorkoutDescription(
     return "No running today. Keep the day truly easy and let the training absorb.";
   }
 
+  if (type === "race") {
+    return getRaceWorkoutDescription(input.targetType);
+  }
+
   if (type === "recovery") {
     return `Move lightly for ${durationText}. The goal is to feel fresher tomorrow than you do today.`;
   }
@@ -704,7 +838,7 @@ export function resolveWorkoutDescription(
   return `Use about ${durationText} for ${repStyle}. This is the ${sessionLabel} for the week. ${phaseHint} It is sized to fit your weekly load and session limit.`;
 }
 
-export function buildGoalCoachNotes(input: PlanGenerationInput, totalWeeks: number, peakLongRunKm: number) {
+export function buildGoalCoachNotes(input: PlanGenerationInput, totalWeeks: number, peakLongRunKm: number, actualPeakLongRunKm?: number) {
   const notes: string[] = [];
 
   if (input.targetType === "general_fitness") {
@@ -725,6 +859,10 @@ export function buildGoalCoachNotes(input: PlanGenerationInput, totalWeeks: numb
     } else {
       notes.push("Half marathon plans prioritize long-run progression, threshold work, and conservative endurance gains.");
     }
+
+    if (typeof actualPeakLongRunKm === "number" && actualPeakLongRunKm > 0 && actualPeakLongRunKm < 12) {
+      notes.push("Your max session duration limits the half marathon peak long run, so the plan stays shorter than an ideal race build.");
+    }
   }
 
   if (input.targetType === "marathon") {
@@ -732,6 +870,10 @@ export function buildGoalCoachNotes(input: PlanGenerationInput, totalWeeks: numb
       notes.push("Your marathon target is close relative to your current weekly volume. This plan is conservative and may not fully prepare you for peak marathon demands.");
     } else {
       notes.push("Marathon plans emphasize long-run progression, weekly durability, and careful fatigue management.");
+    }
+
+    if (typeof actualPeakLongRunKm === "number" && actualPeakLongRunKm > 0 && actualPeakLongRunKm < 18) {
+      notes.push("Your max session duration limits marathon long-run progression, so the peak run stays below an ideal marathon build.");
     }
   }
 

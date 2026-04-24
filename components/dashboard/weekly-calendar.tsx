@@ -72,15 +72,21 @@ export function WeeklyCalendar({
   }
 
   const today = new Date();
-  const weekDays = Array.from({ length: 7 }, (_, index) => {
-    const dayDate = addDays(new Date(week.startDate), index);
+  const endKey = toDateKey(week.endDate);
+  const weekDays: Array<{ dayDate: Date; workouts: Workout[]; isToday: boolean }> = [];
+  for (let offset = 0; offset < 7; offset += 1) {
+    const dayDate = addDays(new Date(week.startDate), offset);
+    if (toDateKey(dayDate) > endKey) {
+      break;
+    }
+
     const workouts = week.workouts.filter((workout) => toDateKey(workout.date) === toDateKey(dayDate));
-    return {
+    weekDays.push({
       dayDate,
       workouts,
       isToday: isSameDate(dayDate, today)
-    };
-  });
+    });
+  }
 
   return (
     <Card>

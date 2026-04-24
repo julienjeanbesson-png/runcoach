@@ -4,7 +4,7 @@ export type RunningLevel = (typeof runningLevels)[number];
 export const targetTypes = ["5k", "10k", "half_marathon", "marathon", "general_fitness"] as const;
 export type TargetType = (typeof targetTypes)[number];
 
-export const workoutTypes = ["easy_run", "long_run", "intervals", "tempo", "recovery", "rest"] as const;
+export const workoutTypes = ["easy_run", "long_run", "intervals", "tempo", "recovery", "race", "rest"] as const;
 export type WorkoutType = (typeof workoutTypes)[number];
 
 export const workoutStatuses = ["planned", "completed", "skipped", "shortened", "pain", "rested"] as const;

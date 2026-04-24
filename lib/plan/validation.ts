@@ -1,4 +1,5 @@
 import type { PlanGenerationInput, TrainingPlan, WorkoutType } from "@/types/runcoach";
+import { toDateKey } from "@/lib/utils/date";
 
 export interface TrainingPlanValidationScenario {
   name: string;
@@ -51,20 +52,20 @@ export const TRAINING_PLAN_VALIDATION_SCENARIOS: TrainingPlanValidationScenario[
     }
   },
   {
-    name: "Intermediate half marathon, 20 km/week, 3 runs/week, 6 weeks",
+    name: "Intermediate half marathon, 20 km/week, 3 runs/week, 8 weeks",
     input: {
       age: 36,
       runningLevel: "intermediate",
       currentWeeklyKm: 20,
       targetType: "half_marathon",
-      targetDate: new Date(Date.now() + 42 * 24 * 60 * 60 * 1000).toISOString(),
+      targetDate: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000).toISOString(),
       runsPerWeek: 3,
       maxDurationPerSession: 80,
       preferredDays: [1, 4, 6],
       injuryNotes: ""
     },
     expectations: {
-      minLongRunKm: 11,
+      minLongRunKm: 12,
       maxQualitySessions: 1,
       notes: "At least one build week should exceed 10 km on the long run."
     }
@@ -130,6 +131,7 @@ export const TRAINING_PLAN_VALIDATION_SCENARIOS: TrainingPlanValidationScenario[
 
 export function validateGeneratedTrainingPlan(plan: TrainingPlan, input: PlanGenerationInput) {
   const issues: string[] = [];
+  const targetDateKey = toDateKey(input.targetDate);
 
   const runCountExceeded = plan.weeks.some((week) => week.workouts.filter((workout) => workout.type !== "rest").length > input.runsPerWeek);
   if (runCountExceeded) {
@@ -141,6 +143,51 @@ export function validateGeneratedTrainingPlan(plan: TrainingPlan, input: PlanGen
   );
   if (beforeStart) {
     issues.push("A workout was scheduled before the plan start date.");
+  }
+
+  if (input.targetType !== "general_fitness") {
+    const raceWeek = plan.weeks.find((week) => week.workouts.some((workout) => toDateKey(workout.date) === targetDateKey));
+    const raceWorkout = plan.weeks.flatMap((week) => week.workouts).find((workout) => workout.type === "race");
+
+    if (!raceWorkout) {
+      issues.push("A race workout was not generated for the target date.");
+    } else if (toDateKey(raceWorkout.date) !== targetDateKey) {
+      issues.push("The race workout is not scheduled on the target date.");
+    }
+
+    const workoutsAfterTarget = plan.weeks.some((week) =>
+      week.workouts.some((workout) => toDateKey(workout.date) > targetDateKey)
+    );
+    if (workoutsAfterTarget) {
+      issues.push("A workout was scheduled after the target race date.");
+    }
+
+    if (!raceWeek) {
+      issues.push("The final week does not include the race date.");
+    } else {
+      const sortedRaceWeek = [...raceWeek.workouts].sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime());
+      const raceIndex = sortedRaceWeek.findIndex((workout) => workout.type === "race");
+      if (raceIndex === -1) {
+        issues.push("The final week does not contain the target race workout.");
+      } else {
+        const preRaceWorkouts = sortedRaceWeek.slice(0, raceIndex);
+        const invalidFinalWeekWorkout = preRaceWorkouts.some(
+          (workout) => workout.type === "tempo" || workout.type === "intervals" || workout.type === "long_run"
+        );
+        if (invalidFinalWeekWorkout) {
+          issues.push("The final week contains a hard workout before the race.");
+        }
+
+        const nonEasyFinalWeekWorkout = preRaceWorkouts.some((workout) => workout.type !== "easy_run");
+        if (nonEasyFinalWeekWorkout) {
+          issues.push("The final week contains a non-easy workout before the race.");
+        }
+
+        if (sortedRaceWeek[raceIndex + 1]) {
+          issues.push("The race workout is not the final workout of the plan.");
+        }
+      }
+    }
   }
 
   const preferredDays = [...new Set(input.preferredDays)].sort((left, right) => left - right);
@@ -156,6 +203,10 @@ export function validateGeneratedTrainingPlan(plan: TrainingPlan, input: PlanGen
   const longRunTypeCount = plan.weeks.map((week) => week.workouts.filter((workout) => workout.type === "long_run").length);
   if (longRunTypeCount.some((count) => count > 1)) {
     issues.push("A week contains more than one long run.");
+  }
+
+  if (input.targetType === "marathon" && plan.coachNotes.length === 0) {
+    issues.push("Marathon plans should include a coach warning when the build is tight.");
   }
 
   return issues;

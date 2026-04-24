@@ -13,6 +13,8 @@ import {
   buildGoalCoachNotes,
   determinePlanWeeks,
   determineWeeklyTargets,
+  getRaceDistanceKm,
+  getRaceWorkoutDuration,
   resolveGoalLongRunBounds,
   resolvePrimaryQualityType,
   resolveSecondaryQualityType,
@@ -26,7 +28,7 @@ import {
   type WeeklyTargets,
   type WorkoutSlot
 } from "@/lib/plan/rules";
-import { formatWeekLabel, getSessionDayOffsets, getWeekStartDate } from "@/lib/plan/schedule";
+import { formatWeekLabel, getRaceWeekDayOffsets, getSessionDayOffsets, getWeekStartDate } from "@/lib/plan/schedule";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -120,6 +122,90 @@ function buildRecoverySlot(input: PlanGenerationInput, targets: WeeklyTargets): 
     purpose: resolveWorkoutPurpose(type, input, targets.phase),
     description: resolveWorkoutDescription(type, input, targets.phase, 0, 0),
     targetDuration: 0
+  };
+}
+
+function isRaceGoal(targetType: PlanGenerationInput["targetType"]) {
+  return targetType !== "general_fitness";
+}
+
+function buildRaceWeekSlot(
+  input: PlanGenerationInput,
+  weekNumber: number,
+  slotIndex: number,
+  preRaceIndex: number,
+  preRaceCount: number,
+  workoutDate: Date
+): Workout {
+  const isRaceDay = slotIndex === preRaceCount;
+  const isFirstPreRaceRun = preRaceIndex === 0;
+  const title = isRaceDay ? resolveWorkoutTitle("race", input, weekNumber, 0) : preRaceIndex === 0 ? "Shakeout run" : "Easy run";
+  const easyDuration = input.runningLevel === "beginner" ? 20 : input.runningLevel === "intermediate" ? 25 : 30;
+  const workoutDuration = isRaceDay ? 0 : Math.min(input.maxDurationPerSession, isFirstPreRaceRun ? easyDuration + 5 : easyDuration);
+  const type = isRaceDay ? "race" : "easy_run";
+  const duration = isRaceDay ? 0 : workoutDuration;
+  const easyDistance = targetDistanceForDuration(input, "easy_run", duration);
+  const description = isRaceDay
+    ? resolveWorkoutDescription("race", input, "taper", 0, 0)
+    : `Run easy for about ${duration} min. Keep this light and finish feeling fresh for race day.`;
+  const purpose = isRaceDay
+    ? resolveWorkoutPurpose("race", input, "taper")
+    : "Keep the legs moving without adding fatigue before the target race.";
+  const targetRpe = isRaceDay ? workoutRpe("race") : workoutRpe("easy_run");
+  const targetEffort = isRaceDay ? workoutEffortLabel("race") : workoutEffortLabel("easy_run");
+
+  return {
+    id: `week-${weekNumber}-workout-${slotIndex + 1}`,
+    date: workoutDate.toISOString(),
+    dayLabel: workoutDate.toLocaleDateString("en-US", { weekday: "short" }),
+    title,
+    type,
+    description,
+    targetDuration: isRaceDay ? getRaceWorkoutDuration(input) : duration,
+    durationMin: isRaceDay ? getRaceWorkoutDuration(input) : duration,
+    targetDistance: isRaceDay ? getRaceDistanceKm(input.targetType) : easyDistance > 0 ? round(easyDistance) : undefined,
+    distanceKm: isRaceDay ? getRaceDistanceKm(input.targetType) : easyDistance > 0 ? round(easyDistance) : 0,
+    targetRpe,
+    targetEffort,
+    purpose,
+    status: "planned"
+  } satisfies Workout;
+}
+
+function buildRaceWeek(
+  input: PlanGenerationInput,
+  weekNumber: number,
+  totalWeeks: number,
+  weekStart: Date,
+  targets: WeeklyTargets
+): TrainingWeek {
+  const raceDate = new Date(input.targetDate);
+  const totalRuns = Math.max(1, Math.round(input.runsPerWeek));
+  const availablePreRaceDays = Math.max(0, Math.floor((raceDate.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000)));
+  const preRaceCount = Math.min(Math.max(0, totalRuns - 1), 2, availablePreRaceDays);
+  const dayOffsets = getRaceWeekDayOffsets(preRaceCount + 1, input.preferredDays, weekStart, raceDate)
+    .slice()
+    .sort((left, right) => left - right);
+  const workouts = dayOffsets.map((dayOffset, slotIndex) => {
+    const workoutDate = addDays(weekStart, dayOffset);
+    return buildRaceWeekSlot(input, weekNumber, slotIndex, slotIndex, preRaceCount, workoutDate);
+  });
+
+  const totalDurationMin = workouts.reduce((sum, workout) => sum + workout.targetDuration, 0);
+  const totalKm = workouts.reduce((sum, workout) => sum + (workout.targetDistance ?? 0), 0);
+
+  return {
+    id: `week-${weekNumber}`,
+    weekNumber,
+    label: formatWeekLabel(weekNumber, totalWeeks),
+    phase: "taper",
+    progressionRole: targets.progressionRole,
+    progressionExplanation: targets.progressionExplanation,
+    startDate: weekStart.toISOString(),
+    endDate: raceDate.toISOString(),
+    totalKm: round(totalKm),
+    totalDurationMin: Math.round(totalDurationMin),
+    workouts
   };
 }
 
@@ -286,15 +372,23 @@ export function generateTrainingPlan(profile: PlanGenerationInput): TrainingPlan
   const startDate = new Date();
   const weeks: TrainingWeek[] = [];
   const goalBounds = resolveGoalLongRunBounds(profile);
-  const coachNotes = buildGoalCoachNotes(profile, totalWeeks, goalBounds.peakKm);
   let previousTargetKm: number | undefined;
 
   for (let weekNumber = 1; weekNumber <= totalWeeks; weekNumber += 1) {
     const weekStart = getWeekStartDate(startDate, weekNumber - 1);
     const targets = determineWeeklyTargets(profile, totalWeeks, weekNumber, previousTargetKm);
     previousTargetKm = targets.targetKm;
-    weeks.push(buildWeek(profile, weekNumber, totalWeeks, weekStart, targets));
+    const isFinalRaceWeek = isRaceGoal(profile.targetType) && weekNumber === totalWeeks;
+    weeks.push(isFinalRaceWeek ? buildRaceWeek(profile, weekNumber, totalWeeks, weekStart, targets) : buildWeek(profile, weekNumber, totalWeeks, weekStart, targets));
   }
+
+  const actualPeakLongRunKm = round(
+    Math.max(
+      0,
+      ...weeks.map((week) => week.workouts.find((workout) => workout.type === "long_run")?.targetDistance ?? 0)
+    )
+  );
+  const coachNotes = buildGoalCoachNotes(profile, totalWeeks, goalBounds.peakKm, actualPeakLongRunKm);
 
   return {
     id: `plan-${profile.targetType}-${startDate.toISOString().slice(0, 10)}`,

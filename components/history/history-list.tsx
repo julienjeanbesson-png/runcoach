@@ -107,7 +107,7 @@ export function HistoryList({ plan, history }: { plan: TrainingPlan | null; hist
                       <div className="flex flex-wrap gap-3 text-sm text-slate-500">
                         {entry.completed != null || entry.actualDurationMin != null || entry.actualDistanceKm != null ? (
                           <span>
-                            {formatMinutes(entry.actualDurationMin ?? entry.completedDurationMin ?? entry.plannedDurationMin ?? entry.targetDuration)} actual /{" "}
+                            {formatMinutes(entry.actualDurationMin ?? entry.plannedDurationMin ?? entry.targetDuration)} actual /{" "}
                             {formatMinutes(entry.plannedDurationMin ?? entry.targetDuration)} planned
                           </span>
                         ) : (

@@ -1,56 +1,72 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { profileSummary } from "@/lib/domain/profile";
-import { formatMinutes, formatWeekRange } from "@/lib/utils/date";
-import type { AppState, TrainingWeek } from "@/types/runcoach";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { HistoryEntry, TrainingWeek } from "@/types/runcoach";
 
 export function DashboardSummary({
-  state,
-  selectedWeek,
-  currentWeekLabel
+  week,
+  history,
+  coachSummary
 }: {
-  state: AppState;
-  selectedWeek: TrainingWeek | null;
-  currentWeekLabel: string;
+  week: TrainingWeek | null;
+  history: HistoryEntry[];
+  coachSummary: string;
 }) {
-  if (!selectedWeek) {
+  if (!week) {
     return (
-      <Card className="border-dashed">
+      <Card className="border-dashed bg-white/80">
         <CardContent className="space-y-2 p-5">
           <h3 className="text-base font-semibold text-slate-950">No plan loaded yet</h3>
-          <p className="text-sm leading-6 text-slate-600">Finish onboarding and RunCoach will build a conservative first week for you.</p>
+          <p className="text-sm leading-6 text-slate-600">Finish onboarding and RunCoach will build your first week here.</p>
         </CardContent>
       </Card>
     );
   }
 
-  const runCount = selectedWeek.workouts.filter((workout) => workout.type !== "rest").length;
+  const plannedRuns = week.workouts.filter((workout) => workout.type !== "rest").length;
+  const completedRuns = history.filter((entry) => entry.weekId === week.id && entry.completed && entry.workoutType !== "rest").length;
+  const plannedDistance = week.totalKm;
+  const completedDistance = roundDistance(
+    history
+      .filter((entry) => entry.weekId === week.id && entry.completed)
+      .reduce((total, entry) => total + (entry.actualDistanceKm ?? entry.plannedDistanceKm ?? 0), 0)
+  );
+
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={selectedWeek.progressionRole === "cutback" ? "warning" : selectedWeek.progressionRole === "taper" ? "neutral" : selectedWeek.progressionRole === "consolidation" ? "secondary" : "success"}>
-            {selectedWeek.progressionRole === "build"
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-emerald-700">Today’s coaching note</p>
+            <CardTitle className="text-slate-950">{week.label}</CardTitle>
+          </div>
+          <Badge
+            variant={
+              week.progressionRole === "cutback"
+                ? "warning"
+                : week.progressionRole === "taper"
+                  ? "neutral"
+                  : week.progressionRole === "consolidation"
+                    ? "secondary"
+                    : "success"
+            }
+          >
+            {week.progressionRole === "build"
               ? "Build week"
-              : selectedWeek.progressionRole === "consolidation"
+              : week.progressionRole === "consolidation"
                 ? "Consolidation week"
-                : selectedWeek.progressionRole === "cutback"
+                : week.progressionRole === "cutback"
                   ? "Cutback week"
                   : "Taper week"}
           </Badge>
         </div>
-        <CardTitle>{currentWeekLabel}</CardTitle>
-        <CardDescription>{formatWeekRange(selectedWeek.startDate, selectedWeek.endDate)}</CardDescription>
-        <CardDescription>{selectedWeek.progressionExplanation}</CardDescription>
-        {state.profile ? <CardDescription>Built from {profileSummary(state.profile)}.</CardDescription> : null}
+        <p className="text-sm leading-6 text-slate-600">{coachSummary}</p>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Metric label="Planned runs" value={String(runCount)} />
-        <Metric label="Weekly volume" value={`${selectedWeek.totalKm} km`} />
-        <Metric label="Weekly time" value={formatMinutes(selectedWeek.totalDurationMin)} />
-        <Metric label="Plan length" value={`${state.activePlan?.totalWeeks ?? 1} weeks`} />
+      <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Metric label="Runs completed" value={`${completedRuns}/${plannedRuns}`} />
+        <Metric label="Distance progress" value={`${completedDistance} / ${roundDistance(plannedDistance)} km`} />
+        <Metric label="Week focus" value={formatWeekRole(week.progressionRole)} />
       </CardContent>
     </Card>
   );
@@ -63,4 +79,23 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-lg font-semibold text-slate-950">{value}</p>
     </div>
   );
+}
+
+function formatWeekRole(role: TrainingWeek["progressionRole"]) {
+  switch (role) {
+    case "build":
+      return "Building load";
+    case "consolidation":
+      return "Holding steady";
+    case "cutback":
+      return "Recovering";
+    case "taper":
+      return "Tapering";
+    default:
+      return "Building load";
+  }
+}
+
+function roundDistance(value: number) {
+  return Math.round(value * 10) / 10;
 }

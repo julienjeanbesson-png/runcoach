@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdaptationPlaceholder } from "@/components/dashboard/adaptation-placeholder";
 import { DashboardSummary } from "@/components/dashboard/dashboard-summary";
@@ -10,8 +11,10 @@ import { useRunCoach } from "@/hooks/use-runcoach";
 import { profileSummary } from "@/lib/domain/profile";
 import { formatWeekRange } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const {
     state,
     currentWeek,
@@ -25,6 +28,12 @@ export default function DashboardPage() {
     hydrated
   } = useRunCoach();
 
+  useEffect(() => {
+    if (hydrated && (!state.profile || !state.activePlan)) {
+      router.replace("/onboarding");
+    }
+  }, [hydrated, router, state.activePlan, state.profile]);
+
   if (!hydrated) {
     return (
       <AppShell>
@@ -33,6 +42,14 @@ export default function DashboardPage() {
           <div className="h-32 animate-pulse rounded-3xl bg-white/80" />
           <div className="h-40 animate-pulse rounded-3xl bg-white/80" />
         </div>
+      </AppShell>
+    );
+  }
+
+  if (!state.profile || !state.activePlan) {
+    return (
+      <AppShell>
+        <div className="h-44 animate-pulse rounded-3xl bg-white/80" />
       </AppShell>
     );
   }

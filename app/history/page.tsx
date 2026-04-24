@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { HistoryArchive } from "@/components/history/history-archive";
 import { HistoryOverview } from "@/components/history/history-overview";
@@ -10,10 +12,25 @@ import { summarizeHistoryProgress } from "@/lib/domain/history";
 import { useRunCoach } from "@/hooks/use-runcoach";
 
 export default function HistoryPage() {
+  const router = useRouter();
   const { state, hydrated } = useRunCoach();
   const progress = summarizeHistoryProgress(state.history);
 
+  useEffect(() => {
+    if (hydrated && (!state.profile || !state.activePlan)) {
+      router.replace("/onboarding");
+    }
+  }, [hydrated, router, state.activePlan, state.profile]);
+
   if (!hydrated) {
+    return (
+      <AppShell>
+        <div className="h-44 animate-pulse rounded-3xl bg-white/80" />
+      </AppShell>
+    );
+  }
+
+  if (!state.profile || !state.activePlan) {
     return (
       <AppShell>
         <div className="h-44 animate-pulse rounded-3xl bg-white/80" />

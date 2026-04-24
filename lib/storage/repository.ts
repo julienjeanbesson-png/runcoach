@@ -2,7 +2,7 @@ import { RUNCOACH_STORAGE_KEY } from "@/lib/storage/keys";
 import { buildAppStateWithProfile, generateTrainingPlan } from "@/lib/plan/generate-plan";
 import { getProgressionExplanation, getProgressionRole } from "@/lib/plan/rules";
 import { SCHEMA_VERSION } from "@/data/constants";
-import { createBlankState, createSeedState } from "@/data/seed";
+import { createBlankState, createSeedState, shouldUseDevelopmentSeedData } from "@/data/seed";
 import { normalizePreferredDays } from "@/lib/domain/profile";
 import type { AppState, UserProfile } from "@/types/runcoach";
 
@@ -116,7 +116,16 @@ export function clearAppState() {
 }
 
 export function createInitialAppState() {
-  return loadAppState() ?? createSeedState();
+  if (typeof window !== "undefined") {
+    const stored = loadAppState();
+    if (stored) {
+      return stored;
+    }
+
+    return shouldUseDevelopmentSeedData() ? createSeedState() : createBlankState();
+  }
+
+  return createBlankState();
 }
 
 export function createStateFromProfile(profile: UserProfile) {

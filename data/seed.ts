@@ -106,3 +106,7 @@ export function createSeedState(): AppState {
     }
   };
 }
+
+export function shouldUseDevelopmentSeedData() {
+  return process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_RUNCOACH_USE_SEED_DATA === "true";
+}

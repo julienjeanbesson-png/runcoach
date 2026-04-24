@@ -1,18 +1,18 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { NextWorkoutHighlight } from "@/components/dashboard/next-workout-highlight";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WeekNavigation } from "@/components/plan/week-navigation";
 import { PlanOverview } from "@/components/plan/plan-overview";
 import { PlanWeekList } from "@/components/plan/plan-week-list";
-import { buttonVariants } from "@/components/ui/button";
 import { useRunCoach } from "@/hooks/use-runcoach";
-import { cn } from "@/lib/utils/cn";
 import { formatWeekRange } from "@/lib/utils/date";
 
 export function PlanPage() {
+  const router = useRouter();
   const {
     hydrated,
     state,
@@ -28,6 +28,12 @@ export function PlanPage() {
     selectWeek
   } = useRunCoach();
 
+  useEffect(() => {
+    if (hydrated && (!state.profile || !state.activePlan)) {
+      router.replace("/onboarding");
+    }
+  }, [hydrated, router, state.activePlan, state.profile]);
+
   if (!hydrated) {
     return (
       <AppShell>
@@ -40,20 +46,10 @@ export function PlanPage() {
     );
   }
 
-  if (!state.activePlan || !selectedWeek) {
+  if (!state.profile || !state.activePlan || !selectedWeek) {
     return (
       <AppShell>
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle>No plan loaded yet</CardTitle>
-            <CardDescription>Complete onboarding and RunCoach will build your full week-by-week plan here.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/onboarding" className={cn(buttonVariants(), "w-full sm:w-auto")}>
-              Start onboarding
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="h-44 animate-pulse rounded-3xl bg-white/80" />
       </AppShell>
     );
   }

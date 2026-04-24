@@ -13,8 +13,8 @@ import {
   getWeekById,
   getWorkoutById
 } from "@/lib/domain/workout";
-import { createBlankState, createSeedState } from "@/data/seed";
-import { clearAppState, loadAppState, saveAppState } from "@/lib/storage/repository";
+import { createBlankState } from "@/data/seed";
+import { clearAppState, createInitialAppState, loadAppState, saveAppState } from "@/lib/storage/repository";
 import { derivePaceSecondsPerKm } from "@/lib/utils/date";
 import type {
   AppState,
@@ -242,13 +242,13 @@ function reducer(state: AppState, action: RunCoachAction): AppState {
 }
 
 export function RunCoachProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, createBlankState());
+  const [state, dispatch] = useReducer(reducer, createInitialAppState());
   const [hydrated, setHydrated] = useState(false);
   const lastPersistedStateRef = useRef<AppState | null>(null);
 
   useEffect(() => {
     const stored = loadAppState();
-    const nextState = stored ?? createSeedState();
+    const nextState = stored ?? createBlankState();
     dispatch({ type: "hydrate", payload: nextState });
     lastPersistedStateRef.current = nextState;
     if (!stored) {

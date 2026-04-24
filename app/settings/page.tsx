@@ -1,13 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { useRunCoach } from "@/hooks/use-runcoach";
 
 export default function SettingsPage() {
-  const { hydrated } = useRunCoach();
+  const router = useRouter();
+  const { hydrated, state } = useRunCoach();
+
+  useEffect(() => {
+    if (hydrated && (!state.profile || !state.activePlan)) {
+      router.replace("/onboarding");
+    }
+  }, [hydrated, router, state.activePlan, state.profile]);
 
   if (!hydrated) {
+    return (
+      <AppShell>
+        <div className="h-44 animate-pulse rounded-3xl bg-white/80" />
+      </AppShell>
+    );
+  }
+
+  if (!state.profile || !state.activePlan) {
     return (
       <AppShell>
         <div className="h-44 animate-pulse rounded-3xl bg-white/80" />
